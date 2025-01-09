@@ -1,0 +1,58 @@
+- name: Setup Basics
+  hosts: master-01
+  vars_files:
+    - vault.yaml
+  tasks:
+    - name: Add ArgoCD Helm repo
+      kubernetes.core.helm_repository:
+        name: argocd
+        repo_url: https://argoproj.github.io/argo-helm
+        force_update: true
+
+    - name: Install ArgoCD with Helm
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argocd/argo-cd
+        chart_version: "7.7.0"
+        create_namespace: true
+        release_namespace: argocd
+        values:
+          global:
+            tolerations:
+              - key: "node.kubernetes.io/not-ready"
+                operator: "Exists"
+                effect: "NoExecute"
+                tolerationSeconds: 20
+              - key: "node.kubernetes.io/unreachable"
+                operator: "Exists"
+                effect: "NoExecute"
+                tolerationSeconds: 20
+          redis-ha:
+            enabled: true
+          server:
+            metrics:
+              enabled: true
+            autoscaling:
+              enabled: true
+              minReplicas: 2
+          repoServer:
+            metrics:
+              enabled: true
+            autoscaling:
+              enabled: true
+              minReplicas: 2
+          applicationSet:
+            replicas: 2
+          controller:
+            replicas: 2
+            metrics:
+              enabled: true
+          dex:
+            enabled: false
+          applicationController:
+            metrics:
+              enabled: true
+          configs:
+            secret:
+              argocdServerAdminPassword: "{{ argo.serverAdminPassword }}"
+              githubSecret: "{{ argo.webhook_github_secret }}"

@@ -1,0 +1,10 @@
+---
+roles:
+  - name: lablabs.rke2
+    src: lablabs.rke2
+    version: 1.36.1
+collections:
+  - name: kubernetes.core
+    version: 5.0.0
+  - name: community.crypto
+    version: 2.22.0

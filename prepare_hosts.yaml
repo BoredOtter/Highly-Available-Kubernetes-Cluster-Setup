@@ -1,0 +1,9 @@
+- name: Prepare host
+  hosts: k8s_cluster
+  become: yes
+  roles:
+    - role: prepare-host
+  vars:
+    kubectl_version: v1.31.0
+    kubectl_checksum: sha256:7c27adc64a84d1c0cc3dcf7bf4b6e916cc00f3f576a2dbac51b318d926032437
+    helm_version: v3.14.4

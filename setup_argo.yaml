@@ -1,0 +1,147 @@
+- name: Setup ArgoCD
+  hosts: master-01
+  vars_files:
+    - vault.yaml
+  tasks:
+    - name: Add ArgoCD Helm repo
+      kubernetes.core.helm_repository:
+        name: argocd
+        repo_url: https://argoproj.github.io/argo-helm
+        force_update: true
+
+    - name: Install ArgoCD with Helm
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argocd/argo-cd
+        chart_version: "7.7.0"
+        create_namespace: true
+        release_namespace: argocd
+        values:
+          global:
+            tolerations:
+              - key: "node.kubernetes.io/not-ready"
+                operator: "Exists"
+                effect: "NoExecute"
+                tolerationSeconds: 20
+              - key: "node.kubernetes.io/unreachable"
+                operator: "Exists"
+                effect: "NoExecute"
+                tolerationSeconds: 20
+          redis-ha:
+            enabled: true
+          server:
+            metrics:
+              enabled: true
+            autoscaling:
+              enabled: true
+              minReplicas: 2
+          repoServer:
+            metrics:
+              enabled: true
+            autoscaling:
+              enabled: true
+              minReplicas: 2
+          applicationSet:
+            replicas: 2
+          controller:
+            replicas: 2
+            metrics:
+              enabled: true
+          dex:
+            enabled: false
+          notifications:
+            enabled: false
+          applicationController:
+            metrics:
+              enabled: true
+          configs:
+            secret:
+              argocdServerAdminPassword: "{{ argo.serverAdminPassword }}"
+              githubSecret: "{{ argo.webhook_github_secret }}"
+
+    - name: Create ArgoCD repository secret
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: home-infra-k8s-charts
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repository
+          stringData:
+            name: home-infra-k8s-charts
+            type: git
+            url: git@github.com:BoredOtter/home-infra-k8s-charts.git
+            sshPrivateKey: "{{ argo.repo_private_key}}"
+
+    - name: Create meme-giver-deployment repository secret
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: meme-giver-deployment
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repository
+          stringData:
+            name: meme-giver-deployment
+            type: git
+            url: git@github.com:BoredOtter/meme-giver-deployment.git
+            sshPrivateKey: "{{ argo.repo_private_key}}"
+
+    - name: Create ArgoCD App Of applicationSet
+      k8s: 
+        state: present
+        definition:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: platformconfig
+            namespace: argocd
+          spec:
+            project: default
+            source:
+              repoURL: git@github.com:BoredOtter/home-infra-k8s-charts.git
+              path: platformconfig
+              targetRevision: HEAD
+              directory:
+                recurse: true
+                jsonnet: {}
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: argocd
+            syncPolicy:
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
+
+    - name: Create namepsaces to be populated with Secrets
+      k8s:
+        state: present
+        api_version: v1
+        kind: Namespace
+        name: "{{ item }}"
+      loop:
+        - monitoring
+        - cert-manager
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Create Grafana Secret
+      k8s:
+        state: present
+        namespace: monitoring
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: grafana-secret
+          type: Opaque
+          stringData:
+            admin-user: "me@boredotter.dev"
+            admin-password: "{{ grafana_password }}"
+

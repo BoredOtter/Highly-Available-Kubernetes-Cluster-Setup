@@ -1,0 +1,101 @@
+- name: Disable swap for current session
+  command: swapoff -a
+  become: true
+  when: ansible_swaptotal_mb > 0
+
+- name: Disable swap permanently, persist reboots
+  replace:
+    path: /etc/fstab
+    regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
+    replace: '#\1\2\3swap\4'
+    backup: yes
+  when: ansible_swaptotal_mb > 0
+
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400 #one day in seconds
+
+- name: Install required system tools
+  apt:
+    name:
+      - bash
+      - curl
+      - util-linux
+      - grep
+      - gawk
+      - nfs-common
+      - open-iscsi
+      - htop
+    state: present
+    update_cache: yes
+
+- name: Ensure iscsid service is running
+  service:
+    name: iscsid
+    state: started
+    enabled: yes
+
+- name: Download kubectl with check (sha256)
+  when: inventory_hostname in groups["masters"]
+  ansible.builtin.get_url:
+    url: https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/
+    mode: 0755
+    checksum: "{{ kubectl_checksum }}"
+
+- name: Ensure pip is installed
+  when: inventory_hostname in groups["masters"]
+  apt:
+    name: python3-pip
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Install required Python packages system-wide
+  when: inventory_hostname in groups["masters"]
+  pip:
+    name:
+      - openshift==0.13.2
+      - kubernetes==30.1.0
+      # - pyyaml - installed by default on os
+    state: present
+    extra_args: --break-system-packages
+  become: true
+
+- name: Install helm if not exists
+  when: inventory_hostname in groups["masters"]
+  unarchive:
+    src: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    extra_opts: "--strip-components=1"
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: true
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Install Helm Diff
+  when: inventory_hostname in groups["masters"]
+  kubernetes.core.helm_plugin:
+    plugin_path: "https://github.com/databus23/helm-diff"
+    state: present
+
+- name: Add blacklist entry to multipath.conf
+  blockinfile:
+    path: /etc/multipath.conf
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: Longhorn blacklist"
+    block: |
+      blacklist {
+          devnode "^sd[a-z0-9]+"
+      }
+
+- name: Restart multipathd service
+  when: inventory_hostname in groups["masters"]
+  service:
+    name: multipathd
+    state: restarted
+    enabled: yes

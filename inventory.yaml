@@ -1,0 +1,24 @@
+all:
+  children:
+    k8s_cluster:
+      children:
+        masters:
+          hosts:
+            master-01:
+              ansible_host: 192.168.0.21
+              ansible_user: user
+              rke2_type: server
+            master-02:
+              ansible_host: 192.168.0.22
+              ansible_user: user
+              rke2_type: server
+            master-03:
+              ansible_host: 192.168.0.23
+              ansible_user: user
+              rke2_type: server
+        workers:
+          hosts:
+            worker-01:
+              ansible_host: 192.168.0.41
+              ansible_user: user
+              rke2_type: agent

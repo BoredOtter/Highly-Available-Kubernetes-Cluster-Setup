@@ -1,0 +1,71 @@
+- name: Configure RKE2 Cilium
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure RKE2 manifests directory exists
+      file:
+        path: /var/lib/rancher/rke2/server/manifests
+        state: directory
+        mode: '0755'
+
+    - name: Create RKE2 Cilium configuration
+      copy:
+        dest: /var/lib/rancher/rke2/server/manifests/rke2-cilium-config.yaml
+        content: |
+          apiVersion: helm.cattle.io/v1
+          kind: HelmChartConfig
+          metadata:
+            name: rke2-cilium
+            namespace: kube-system
+          spec:
+            valuesContent: |-
+              hubble:
+                enabled: true
+                relay:
+                  enabled: true
+                ui:
+                  enabled: true
+        owner: root
+        group: root
+        mode: '0644'
+
+- name: Deploy RKE2
+  hosts: all
+  become: yes
+  roles:
+     - role: lablabs.rke2
+  vars_files:
+    - vault.yaml
+  vars:
+    rke2_version: v1.31.1+rke2r1
+    rke2_disable: rke2-ingress-nginx
+    rke2_cni: [cilium]
+    rke2_download_kubeconf: true
+    rke2_download_kubeconf_file_name: rke2.yaml
+    rke2_download_kubeconf_path: ./
+    rke2_additional_sans: ["91.227.217.59","192.168.0.20"]
+    rke2_server_options:
+      - "etcd-expose-metrics: true"
+    rke2_kube_apiserver_args:
+      - "default-not-ready-toleration-seconds=20"
+      - "default-unreachable-toleration-seconds=20"
+    rke2_kube_controller_manager_arg:
+      - "node-monitor-period=5s"
+      - "node-monitor-grace-period=20s"
+
+- name: Move kubeconfig
+  hosts: masters
+  tasks:
+    - name: Ensure .kube directory exists
+      file:
+        path: "{{ ansible_env.HOME }}/.kube"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+    - name: Copy kubeconfig to default location
+      copy:
+        src: /etc/rancher/rke2/rke2.yaml
+        dest: ~/.kube/config
+        owner: "{{ ansible_user }}"
+        remote_src: yes
+        mode: '0600'
