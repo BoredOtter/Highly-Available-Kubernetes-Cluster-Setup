@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cnpg-test
+  labels:
+    app: cnpg-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cnpg-test
+  template:
+    metadata:
+      labels:
+        app: cnpg-test
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - master-01
+      containers:
+      - name: cnpg-test
+        image: ksw2137/cnpg-test:6
+        env:
+        - name: DB_HOST
+          value: ""
+        - name: DB_NAME
+          value: ""
+        - name: DB_USER
+          value: ""
+        - name: DB_PASSWORD
+          value: ""
