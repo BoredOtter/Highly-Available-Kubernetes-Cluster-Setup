@@ -1,0 +1,123 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  labels:
+    argocd.argoproj.io/instance: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  destination:
+    namespace: monitoring
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 66.6.0
+    chart: kube-prometheus-stack
+    helm:
+      values: |-
+        grafana:
+          replicas: 2
+          admin:
+            existingSecret: grafana-secret
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+              - name: 'default'
+                orgId: 1
+                folder: ''
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+          dashboards:
+            default:
+              node-exporter:
+                title: NodeExporter
+                gnetId: 1860
+                revision: 37
+                datasource: Thanos
+              nginx-next-gen:
+                title: NginxIngress
+                gnetId: 14314
+                revision: 2
+                datasource: Thanos
+              loki-logs-per-app:
+                title: LokiLogs
+                gnetId: 13639
+                revision: 2
+                datasource: loki
+              argocd:
+                title: ArgoCD
+                gnetId: 14584
+                revision: 1
+                datasource: Thanos
+              kube-state-metrics-v2:
+                title: KubernetesMetrics
+                gnetId: 13332
+                revision: 12
+                datasource: Thanos
+              k8s-cluster-monitoring:
+                title: K8SClusterMonitoring
+                gnetId: 315
+                revision: 3
+                datasource: Thanos
+              longhorn:
+                title: Longhorn
+                gnetId: 13032
+                revision: 6
+                datasource: Thanos
+              cnpg:
+                title: CloudNativePG
+                gnetId: 20417
+                revision: 3
+                datasource: Thanos
+              cert-manager:
+                title: cert-manager
+                gnetId: 22184
+                revision: 3
+                datasource: Thanos
+          additionalDataSources:
+            - name: loki
+              access: proxy
+              basicAuth: false
+              editable: true
+              jsonData:
+                tlsSkipVerify: true
+              orgId: 1
+              type: loki
+              url: http://loki:3100
+              version: 1
+            - name: Thanos
+              orgId: 1
+              type: prometheus
+              url: http://thanos-query:10902
+              version: 1
+        alertmanager:
+          enabled: false
+        prometheus:
+          prometheusSpec:
+            thanos:
+              image: quay.io/thanos/thanos:v0.36.1
+            retention: 10d
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            replicas: 2
+            podAntiAffinity: hard
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 15Gi
+  project: config
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

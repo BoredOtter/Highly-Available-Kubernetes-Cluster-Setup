@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    argocd.argoproj.io/instance: apps
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+  name: metallb
+  namespace: argocd
+spec:
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle
+      kind: CustomResourceDefinition
+  destination:
+    namespace: metallb-system
+    server: https://kubernetes.default.svc
+  project: config
+  source:
+    helm:
+      valueFiles:
+      - values.yaml
+    path: charts/metallb
+    repoURL: <REPO_URL>
+    targetRevision: HEAD
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true

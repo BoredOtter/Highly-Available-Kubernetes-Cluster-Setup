@@ -1,0 +1,24 @@
+cert-manager:
+  installCRDs: true
+  prometheus:
+    enabled: true
+    podmonitor:
+      enabled: true
+  
+clusterIssuers:
+  letsencrypt-dns01-issuer:
+    acme:
+      server: https://acme-v02.api.letsencrypt.org/directory
+      email: <EMAIL>
+      privateKeySecretRef:
+        name: letsencrypt-dns01-private-key
+      solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: <CLOUDFLARE_API_TOKEN_SECRET_NAME>
+              key: <API_TOKEN_KEY>
+
+certificate:
+  name: wildcard-certificate
+  issuerName: letsencrypt-dns01-issuer

@@ -1,0 +1,14 @@
+{{- range $k, $v := .Values.ipaddresspools }}
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: {{ quote $k }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "metallb.labels" $ | nindent 4 }}
+spec:
+  {{- toYaml $v | nindent 2 }}
+
+---
+{{- end }}

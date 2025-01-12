@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  labels:
+    argocd.argoproj.io/instance: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  destination:
+    namespace: ingress-nginx
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    targetRevision: 4.11.3
+    chart: ingress-nginx
+    helm:
+      values: |-
+        controller:
+          extraArgs: 
+            default-ssl-certificate: "cert-manager/wildcard-certificate"
+          allowSnippetAnnotations: true
+          kind: DaemonSet
+          config:
+            force-ssl-redirect: true 
+          service:
+            enabled: true
+            externalTrafficPolicy: Local
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: true
+  sources: []
+  project: config
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true

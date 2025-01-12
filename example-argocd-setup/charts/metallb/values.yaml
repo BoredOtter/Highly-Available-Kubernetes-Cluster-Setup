@@ -1,0 +1,13 @@
+l2advertisements:
+  metallb-pool:
+    ipAddressPools:
+      - metallb-pool
+
+ipaddresspools:
+  metallb-pool:
+    addresses:
+      - 192.168.0.30-192.168.0.30
+
+speaker: 
+  frr:
+    enabled: false

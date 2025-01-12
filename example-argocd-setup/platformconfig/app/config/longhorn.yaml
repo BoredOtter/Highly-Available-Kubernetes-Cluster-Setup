@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
+  project: config
+  sources:
+    - chart: longhorn
+      repoURL: https://charts.longhorn.io/
+      targetRevision: v1.7.1
+      helm:
+        values: |
+          defaultSettings:
+            nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+          preUpgradeChecker:
+            jobEnabled: false
+          metrics:
+            serviceMonitor:
+              enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system

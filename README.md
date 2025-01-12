@@ -29,3 +29,6 @@ This repository contains Ansible playbooks for configuring hosts and setting up 
     ```sh
     ansible-playbook -i inventory.yaml setup_argo.yaml --become --ask-become-pass --vault-password-file vaultcreds
     ```
+
+## Example ArgoCD Setup
+Contains example apps and configuration for setting up components responsible for monitoring (Grafana, `Prometheus`, `Node Exporter`, `Thanos`) in HA mode. Also logging using `Loki`. Exposing services to the public network along with HTTPS certificate automation (Cert-manager, MetalLB, Nginx Ingress). Providing storage using Longhorn. And an example setup of CloudNativePG.
